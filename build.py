@@ -806,19 +806,46 @@ Diagnostic bundle:
         help="Build in release mode (Rust backend)",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true",
-        help="Show detailed build output",
+        "--verbose", "-v", action="count", default=0,
+        help="Increase log verbosity (can be specified multiple times: -vvv)",
     )
     parser.add_argument(
-        "--list", action="store_true",
-        help="List available modules and exit",
+        "--skip-diagnostics", action="store_true",
+        help="Skip diagnostic generation (faster iteration)",
+    )
+    parser.add_argument(
+        "--output-dir", "-o", type=str, default=None,
+        help="Custom output directory for build artifacts",
+    )
+    parser.add_argument(
+        "--version", action="version", version="build.py 1.0.0",
+        help="Print build.py version and exit",
+    )
+    parser.add_argument(
+        "--list-targets", action="store_true",
+        help="List all discoverable build targets with descriptions and exit",
     )
 
     args = parser.parse_args()
 
+    # Handle --output-dir
+    if args.output_dir:
+        global DIAGNOSTIC_DIR
+        DIAGNOSTIC_DIR = Path(args.output_dir).resolve()
+        DIAGNOSTIC_DIR.mkdir(parents=True, exist_ok=True)
+
     print(f"\n  {color('Tent of Trials: building', Colors.CYAN)}")
     print(f"  Working directory: {ROOT}")
     print()
+
+    if args.list_targets:
+        print(f"  {color('Available build targets:', Colors.BOLD)}")
+        for m in MODULES:
+            desc = f"{m.language} module"
+            print(f"    {color(m.name, Colors.CYAN):20s} {desc}")
+            print(f"      {'':20s} dir: {m.dir.relative_to(ROOT)}")
+            print(f"      {'':20s} build: {' '.join(m.build_cmd)}")
+        return 0
 
     if args.list:
         print(f"  {color('Available modules:', Colors.BOLD)}")
@@ -899,7 +926,11 @@ Diagnostic bundle:
 
     print_summary(results)
 
-    diagnostics_ok = generate_logd(results, args.verbose)
+    if args.skip_diagnostics:
+        print(f"\n  {color('⏭  Skipping diagnostic generation (--skip-diagnostics)', Colors.YELLOW)}")
+        return 0 if all(r[1] for r in results) else 1
+
+    diagnostics_ok = generate_logd(results, args.verbose > 0)
 
     return 0 if diagnostics_ok and all(r[1] for r in results) else 1
 
