@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeroeye.io/schemas/order.json",
+  "title": "Order",
+  "description": "Represents a trading order in the zeroeye market engine. Orders can be limit, market, stop, trailing stop, or iceberg types with various time-in-force policies.",
+  "type": "object",
+  "required": [
+    "id",
+    "client_order_id",
+    "symbol",
+    "side",
+    "type",
+    "status",
+    "price",
+    "quantity",
+    "filled_quantity",
+    "remaining_quantity",
+    "leaves_quantity",
+    "cumulative_quote_quantity",
+    "avg_price",
+    "time_in_force",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique server-assigned order identifier"
+    },
+    "client_order_id": {
+      "type": "string",
+      "description": "Client-supplied order identifier for idempotency"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Trading pair symbol (e.g. BTCUSDT, ETHBTC)"
+    },
+    "side": {
+      "type": "string",
+      "enum": ["buy", "sell"],
+      "description": "Order side: buy or sell"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["limit", "market", "stop_limit", "stop_market", "trailing_stop", "iceberg"],
+      "description": "Order execution type"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["new", "partially_filled", "filled", "cancelled", "rejected", "expired"],
+      "description": "Current order status"
+    },
+    "price": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Order price as a decimal string (use string to avoid floating-point precision loss)"
+    },
+    "stop_price": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Stop price for stop-limit and stop-market orders"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Order quantity as a decimal string"
+    },
+    "filled_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Total filled quantity"
+    },
+    "remaining_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Remaining unfilled quantity"
+    },
+    "leaves_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Quantity available for matching"
+    },
+    "cumulative_quote_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Cumulative quote asset quantity traded"
+    },
+    "avg_price": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Average fill price"
+    },
+    "time_in_force": {
+      "type": "string",
+      "enum": ["gtc", "ioc", "fok", "gtd"],
+      "description": "Time in force: Good-Till-Cancel, Immediate-or-Cancel, Fill-or-Kill, Good-Till-Date"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Order creation timestamp (ISO 8601)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp (ISO 8601)"
+    },
+    "expire_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiration timestamp for GTD orders (null if not applicable)"
+    },
+    "iceberg_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Visible quantity for iceberg orders"
+    },
+    "display_quantity": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$",
+      "description": "Display quantity for iceberg orders"
+    }
+  },
+  "additionalProperties": false
+}
