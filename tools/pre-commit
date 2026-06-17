@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""Pre-commit hook that runs diagnostic generation before every commit.
+
+Runs `python3 build.py`, stages the generated diagnostic artifacts,
+and aborts the commit if the build fails.
+"""
+
+import hashlib
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+DIAGNOSTIC_DIR = ROOT / "diagnostic"
+BUILD_SCRIPT = ROOT / "build.py"
+HASH_CACHE = ROOT / ".git" / "diagnostic_hash_cache"
+
+
+def get_latest_diagnostic_files():
+    """Return the most recent .logd and .json files in diagnostic/."""
+    logd_files = sorted(DIAGNOSTIC_DIR.glob("*.logd"), key=os.path.getmtime, reverse=True)
+    json_files = sorted(DIAGNOSTIC_DIR.glob("*.json"), key=os.path.getmtime, reverse=True)
+    return (logd_files[0] if logd_files else None, json_files[0] if json_files else None)
+
+
+def file_hash(path: Path) -> str:
+    """Return SHA-256 hash of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def diagnostics_unchanged(logd: Path, json_f: Path) -> bool:
+    """Check if diagnostic files haven't changed since last commit."""
+    if not HASH_CACHE.exists():
+        return False
+    try:
+        cached = HASH_CACHE.read_text().strip().split("\n")
+        if len(cached) != 2:
+            return False
+        return cached[0] == str(file_hash(logd)) and cached[1] == str(file_hash(json_f))
+    except Exception:
+        return False
+
+
+def save_hash_cache(logd: Path, json_f: Path):
+    """Save diagnostic file hashes to cache."""
+    HASH_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    HASH_CACHE.write_text(f"{file_hash(logd)}\n{file_hash(json_f)}\n")
+
+
+def run_with_countdown(cmd, cwd):
+    """Run a command with a countdown timer."""
+    print("🔧 Running build diagnostics (this may take a while)...")
+    start = time.time()
+    proc = subprocess.Popen(
+        cmd, cwd=str(cwd),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True
+    )
+    # Print output as it comes, with elapsed time
+    while proc.poll() is None:
+        elapsed = time.time() - start
+        mins, secs = divmod(int(elapsed), 60)
+        print(f"\r⏱  Elapsed: {mins:02d}:{secs:02d} (waiting for build.py...)", end="", flush=True)
+        time.sleep(1)
+    # Read remaining output
+    stdout, _ = proc.communicate()
+    print()  # newline after countdown
+    if stdout:
+        print(stdout)
+    return proc.returncode
+
+
+def main():
+    # Check if we're in a git repo
+    if not (ROOT / ".git").exists():
+        print("❌ Not a git repository. Skipping pre-commit hook.")
+        sys.exit(1)
+
+    # Run build.py
+    print("=" * 60)
+    print("🪝 Pre-commit hook: Running diagnostic build")
+    print("=" * 60)
+
+    returncode = run_with_countdown([sys.executable, str(BUILD_SCRIPT)], ROOT)
+
+    if returncode != 0:
+        print("\n❌ build.py failed! Commit aborted.")
+        print("   Fix the build errors and try again.")
+        sys.exit(1)
+
+    # Find the latest diagnostic files
+    logd, json_f = get_latest_diagnostic_files()
+
+    if not logd or not json_f:
+        print("\n❌ No diagnostic artifacts found after build! Commit aborted.")
+        sys.exit(1)
+
+    # Check if diagnostics changed
+    if diagnostics_unchanged(logd, json_f):
+        print("✅ Diagnostics unchanged since last commit. Skipping rebuild.")
+        sys.exit(0)
+
+    # Stage the diagnostic files
+    try:
+        subprocess.run(["git", "add", str(logd), str(json_f)], cwd=str(ROOT), check=True)
+        save_hash_cache(logd, json_f)
+        print(f"✅ Staged diagnostic artifacts:")
+        print(f"   - {logd.name}")
+        print(f"   - {json_f.name}")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Failed to stage diagnostic files: {e}")
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
