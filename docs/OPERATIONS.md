@@ -310,3 +310,59 @@ Audit logs are retained for 365 days and include:
 2. Update Kubernetes secret: `kubectl create secret tls tot-tls --cert=new.crt --key=new.key -n tent-production --dry-run=client -o yaml | kubectl apply -f -`
 3. Restart services: `kubectl rollout restart deployment -n tent-production`
 4. Verify new certificate: `openssl s_client -connect api.example.com:443 -servername api.example.com`
+
+## Diagnostic Diff Tool
+
+To compare two diagnostic metadata JSON files between submissions:
+
+```bash
+python3 tools/diagnostic_diff.py diagnostic/build-old.json diagnostic/build-new.json
+```
+
+Human-readable output:
+```
+Added modules (3):
+  + backend
+  + engine
+  + market
+Duration changes (1):
+  frailbox: 0s -> 0.02s (+0.02s)
+Summary: passed 0 -> 1, failed 1 -> 3
+```
+
+Machine-readable JSON mode:
+```bash
+python3 tools/diagnostic_diff.py old.json new.json --json
+```
+
+Exit codes:
+- `0` — files compared successfully
+- `1` — missing file or invalid JSON
+
+Compared fields per module: `status`, `elapsed_seconds`, `artifact`, `output`.
+
+The tool also summarizes total passed/failed counts between the two runs.
+
+The tool requires no external dependencies beyond the Python standard library.
+
+The tool accepts two positional arguments (paths to JSON files) and one flag (`--json`).
+Output covers added, removed, changed status, and duration deltas.
+For automated workflows, use `--json` to get a structured diff object.
+
+The tool validates both inputs and exits with code 1 if either file is missing or invalid JSON.
+
+### Examples
+
+Compare two builds:
+```bash
+python3 tools/diagnostic_diff.py \
+  diagnostic/build-abc12345.json \
+  diagnostic/build-def67890.json
+```
+
+JSON output for CI:
+```bash
+python3 tools/diagnostic_diff.py \
+  diagnostic/build-abc12345.json \
+  diagnostic/build-def67890.json --json
+```
