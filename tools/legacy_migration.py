@@ -61,7 +61,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
 from dataclasses import dataclass, field, asdict
 
 # ---------------------------------------------------------------------------
@@ -325,7 +325,7 @@ class MigrationEngine:
     provide significant speedup because the GIL is released during I/O.
     """
 
-    def __init__(self, config: MigrationConfig):
+    def __init__(self, config: MigrationConfig) -> None:
         """Initialize the migration engine with the given configuration."""
         self.config = config
         self.result = MigrationResult(
@@ -770,7 +770,7 @@ class DataTransformer:
     are implemented. The remaining transformers are placeholders.
     """
 
-    def __init__(self, from_version: int, to_version: int):
+    def __init__(self, from_version: int, to_version: int) -> None:
         self.from_version = from_version
         self.to_version = to_version
 
@@ -803,7 +803,7 @@ class V1ToV2Transformer(DataTransformer):
     to v2 format, the original v1 UUIDs cannot be recovered without a backup.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(1, 2)
 
     def transform(self, record: DataRecord) -> DataRecord:
@@ -858,7 +858,7 @@ class V2ToV3Transformer(DataTransformer):
     stored as a regular JSON string.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(2, 3)
 
     def transform(self, record: DataRecord) -> DataRecord:
@@ -928,7 +928,7 @@ def get_transformer(from_version: int, to_version: int) -> DataTransformer:
 # UTILITY FUNCTIONS
 # ---------------------------------------------------------------------------
 
-def compute_checksum(data: Dict[str, Any]) -> str:
+def compute_checksum(data: Dict[str, object]) -> str:
     """Compute a SHA-256 checksum for a data record."""
     serialized = json.dumps(data, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(serialized).hexdigest()
@@ -957,7 +957,7 @@ def format_duration(seconds: float) -> str:
         return f"{days:.1f}d"
 
 
-def load_json_file(path: str) -> Any:
+def load_json_file(path: str) -> Union[Dict[str, object], List[object]]:
     """Load a JSON file with error handling."""
     try:
         with open(path, "r") as f:
@@ -970,7 +970,7 @@ def load_json_file(path: str) -> Any:
         raise
 
 
-def write_json_file(path: str, data: Any, pretty: bool = True) -> None:
+def write_json_file(path: str, data: Union[Dict[str, object], List[object]], pretty: bool = True) -> None:
     """Write JSON data to a file with error handling."""
     try:
         with open(path, "w") as f:
@@ -983,13 +983,13 @@ def write_json_file(path: str, data: Any, pretty: bool = True) -> None:
         raise
 
 
-def batch_iterator(items: List[Any], batch_size: int):
+def batch_iterator(items: List[object], batch_size: int) -> Generator[List[object], None, None]:
     """Iterate over items in batches."""
     for i in range(0, len(items), batch_size):
         yield items[i:i + batch_size]
 
 
-def retry_operation(operation, max_retries: int = 3, base_delay: float = 1.0):
+def retry_operation(operation: Callable[[], object], max_retries: int = 3, base_delay: float = 1.0) -> object:
     """Retry an operation with exponential backoff."""
     for attempt in range(max_retries):
         try:
@@ -1070,7 +1070,7 @@ Examples:
     return parser
 
 
-def main():
+def main() -> int:
     """Main entry point for the migration script."""
     parser = create_arg_parser()
     args = parser.parse_args()
