@@ -1,54 +1,61 @@
-# Data Directory
+# Test Data
 
-This directory contains data files used by the Tent of Trials platform.
+This directory contains generated test data for development and testing.
 
-## Contents
+## Usage
 
-| File/Directory | Description | Format | Update Frequency |
-|---------------|-------------|--------|-----------------|
-| `schema.sql` | Database schema definition | SQL | Per migration |
-| `seed.sql` | Seed data for development | SQL | Per release |
-| `migration.sql` | Pending database migrations | SQL | Per deployment |
-| `reference/` | Reference data (instruments, exchanges) | JSON | Weekly |
-| `test/` | Test data for development | JSON | Manual |
-| `backup/` | Database backup snapshots | SQL | Daily |
+Generate with a specific seed (deterministic):
 
-## Schema Files
-
-The `schema.sql` file contains the complete database schema. It is auto-generated
-from the migration files and may not reflect the current state of the database
-if migrations have been applied manually. For the authoritative schema, query
-the `information_schema` tables directly.
-
-## Seed Data
-
-The `seed.sql` file contains seed data for development environments only.
-It creates sample users, instruments, and configuration that make the
-application usable immediately after deployment.
-
-WARNING: The seed data includes test API keys and passwords that are publicly
-visible in this repository. Do NOT use these credentials in production.
-The seed data is intended for local development only.
-
-## Migration Files
-
-Migration files follow the naming convention: `{YYYYMMDDHHMMSS}_{description}.sql`
-Migration files are applied in order by the migration tool. The migration state
-is tracked in the `_migrations` table in the database.
-
-Pending migrations that have not yet been applied to production:
-- 20240701000000_add_analytics_rollups.sql (in review)
-- 20240715000000_add_user_activity_indexes.sql (in review)
-
-## Backup Files
-
-Database backup snapshots are stored in the `backup/` directory. These are
-created by the automated backup system and are retained for 30 days. The
-backup files are compressed with gzip and encrypted with GPG.
-
-To restore a backup:
 ```bash
-gpg -d backup/tent_production_20240101.sql.gz | gunzip | psql -h localhost tent_production
+python3 tools/data_generator.py --seed 42 --output-dir ./test_data
 ```
 
-The GPG key ID is stored in the team vault under `secret/database/backup-key`.
+Generate with a random seed (prints seed for reproducibility):
+
+```bash
+python3 tools/data_generator.py --output-dir ./test_data
+# Output: Generating test data with seed 12345678...
+```
+
+Print only the seed that would be used:
+
+```bash
+python3 tools/data_generator.py --print-seed
+# Output: Seed: 98765432
+```
+
+## Deterministic Output
+
+When the same seed and arguments are provided, output is byte-for-byte identical:
+
+```bash
+# Run 1
+python3 tools/data_generator.py --seed 42 --users 10 --orders 20
+# Run 2 (identical output)
+python3 tools/data_generator.py --seed 42 --users 10 --orders 20
+```
+
+## Output Format
+
+JSON files include a `_meta` header with the seed and timestamp:
+
+```json
+{
+  "_meta": {
+    "generator": "data_generator.py",
+    "seed": 42,
+    "generated_at": "2026-01-15T12:00:00+00:00"
+  },
+  "data": [...]
+}
+```
+
+## Verification
+
+Run the determinism test:
+
+```bash
+python3 tools/test_determinism.py
+```
+
+This validates 3 different seeds across 3 iterations each.
