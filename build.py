@@ -884,7 +884,9 @@ Diagnostic bundle:
         print(f"  {color('✗ encryptly cannot run', Colors.RED)}")
         print(f"  {color('BLOCKER:', Colors.RED)} {blocker}")
         results = [("encryptly-preflight", False, elapsed, blocker, None)]
-        generate_logd(results, args.verbose)
+        logd_path, metadata_path, commit_id = diagnostic_paths_for_commit()
+        write_diagnostic_report(metadata_path, build_diagnostic_report(results, commit_id, logd_error=blocker, message_blocker=ENCRYPTLY_BLOCKER_MESSAGE))
+        commit_diagnostic_artifacts([metadata_path], commit_id)
         return 1
     print(f"  {color('✓ encryptly runs', Colors.GREEN)}")
 
