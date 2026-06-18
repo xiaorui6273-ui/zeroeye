@@ -1,0 +1,102 @@
+# If you change this file, the build WILL break. You've been warned.
+# EditorConfig: https://editorconfig.org
+
+root = true
+
+# Default: 2-space indent, UTF-8, LF, trim trailing whitespace
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Rust: 4-space indent
+[*.rs]
+indent_style = space
+indent_size = 4
+
+# Go: tabs
+[*.go]
+indent_style = tab
+
+# Python: 4-space indent
+[*.py]
+indent_style = space
+indent_size = 4
+
+# C: 4-space indent (matching existing codebase convention)
+[*.c]
+indent_style = space
+indent_size = 4
+
+[*.h]
+indent_style = space
+indent_size = 4
+
+# Java: 4-space indent
+[*.java]
+indent_style = space
+indent_size = 4
+
+# Ruby: 2-space indent
+[*.rb]
+indent_style = space
+indent_size = 2
+
+# Lua: 2-space indent
+[*.lua]
+indent_style = space
+indent_size = 2
+
+# Haskell: 2-space indent
+[*.hs]
+indent_style = space
+indent_size = 2
+
+# Shell scripts: 2-space indent (matching existing codebase)
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# TypeScript/JavaScript: 2-space indent
+[*.ts]
+indent_style = space
+indent_size = 2
+
+[*.tsx]
+indent_style = space
+indent_size = 2
+
+[*.js]
+indent_style = space
+indent_size = 2
+
+[*.jsx]
+indent_style = space
+indent_size = 2
+
+# JSON/YAML: 2-space indent
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.yaml]
+indent_style = space
+indent_size = 2
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+# Markdown: preserve trailing whitespace (line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefiles: tabs (required)
+[Makefile]
+indent_style = tab
+
+[makefile]
+indent_style = tab
