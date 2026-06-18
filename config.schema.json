@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/lobster-trap/zeroeye/blob/main/config.schema.json",
+  "title": "RootConfig",
+  "description": "Root configuration for the Tent of Trials backend microservice orchestration framework",
+  "type": "object",
+  "required": ["service", "registry", "discovery", "messaging"],
+  "properties": {
+    "service": { "$ref": "#/definitions/ServiceConfig" },
+    "registry": { "$ref": "#/definitions/RegistryConfig" },
+    "discovery": { "$ref": "#/definitions/DiscoveryConfig" },
+    "messaging": { "$ref": "#/definitions/MessagingConfig" }
+  },
+  "definitions": {
+    "ServiceConfig": {
+      "description": "Service identity and network configuration",
+      "type": "object",
+      "required": ["name", "version", "host", "port"],
+      "properties": {
+        "name": { "type": "string", "description": "Service name identifier" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$", "description": "Semantic version" },
+        "host": { "type": "string", "format": "hostname", "description": "Host address to bind" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "Port number" },
+        "tls_enabled": { "type": "boolean", "default": false },
+        "tls_cert_path": { "type": ["string", "null"] },
+        "tls_key_path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "RegistryConfig": {
+      "description": "Service registry backend configuration",
+      "type": "object",
+      "required": ["backend", "endpoints"],
+      "properties": {
+        "backend": { "type": "string", "enum": ["etcd", "consul", "zookeeper", "eureka"] },
+        "endpoints": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "heartbeat_interval_ms": { "type": "integer", "minimum": 100, "default": 5000 },
+        "ttl_seconds": { "type": "integer", "minimum": 1, "default": 30 },
+        "replication_factor": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 }
+      },
+      "additionalProperties": false
+    },
+    "DiscoveryConfig": {
+      "description": "Service discovery provider configuration",
+      "type": "object",
+      "required": ["provider", "namespace", "health_check_path"],
+      "properties": {
+        "provider": { "type": "string", "enum": ["consul", "eureka", "kubernetes", "dns"] },
+        "namespace": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "health_check_path": { "type": "string", "pattern": "^/" },
+        "health_check_interval_ms": { "type": "integer", "minimum": 100, "default": 10000 }
+      },
+      "additionalProperties": false
+    },
+    "MessagingConfig": {
+      "description": "Message broker configuration",
+      "type": "object",
+      "required": ["broker_type", "uris", "consumer_group"],
+      "properties": {
+        "broker_type": { "type": "string", "enum": ["kafka", "rabbitmq", "nats", "redis", "pulsar"] },
+        "uris": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "consumer_group": { "type": "string" },
+        "max_retries": { "type": "integer", "minimum": 0, "default": 3 },
+        "retry_backoff_ms": { "type": "integer", "minimum": 0, "default": 1000 },
+        "batch_size": { "type": "integer", "minimum": 1, "default": 100 },
+        "compression": { "type": "string", "enum": ["none", "gzip", "snappy", "lz4", "zstd"], "default": "none" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
