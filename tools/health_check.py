@@ -65,6 +65,42 @@ MEMORY_THRESHOLD_WARNING = 80
 MEMORY_THRESHOLD_CRITICAL = 90
 
 # ---------------------------------------------------------------------------
+# RETRY / BACKOFF HELPER (stdlib only)
+# ---------------------------------------------------------------------------
+
+def retry_with_backoff(
+    fn,
+    max_retries: int = 3,
+    base_delay: float = 0.5,
+    backoff_factor: float = 2.0,
+    retryable_exceptions: tuple = (OSError, IOError, socket.timeout, ConnectionError),
+):
+    """Retry *fn* with exponential backoff on transient failures.
+
+    Returns the first successful result, or the last failure result if all
+    attempts are exhausted.  The return type matches whatever *fn* returns
+    so it can wrap any existing check function without changing its shape.
+    """
+    last_result = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return fn()
+        except retryable_exceptions:
+            if attempt < max_retries:
+                delay = base_delay * (backoff_factor ** (attempt - 1))
+                time.sleep(delay)
+            else:
+                # Fall through — return the error result on last attempt
+                pass
+        except Exception:
+            # Non-retryable — propagate immediately
+            raise
+    # If we get here, all retries raised retryable exceptions.
+    # Return a CRITICAL result matching the expected 3-tuple shape.
+    return "CRITICAL", f"Failed after {max_retries} attempts", 0
+
+
+# ---------------------------------------------------------------------------
 # CHECK FUNCTIONS
 # ---------------------------------------------------------------------------
 
@@ -94,12 +130,15 @@ def check_http_service(host: str, port: int, path: str, timeout: int) -> Tuple[s
 
 
 def check_tcp_port(host: str, port: int, timeout: int) -> Tuple[str, str, float]:
-    try:
+    def _raw_check():
         start = time.time()
         sock = socket.create_connection((host, port), timeout=timeout)
         sock.close()
         latency = (time.time() - start) * 1000
         return "OK", f"Connected ({latency:.1f}ms)", latency
+
+    try:
+        return retry_with_backoff(_raw_check)
     except socket.timeout:
         return "CRITICAL", f"Connection timeout ({timeout}s)", 0
     except ConnectionRefusedError:
@@ -132,7 +171,7 @@ def check_certificate_expiry(host: str, port: int = 443) -> Tuple[str, str, int]
 
 
 def check_disk_usage(path: str = "/") -> Tuple[str, str, float]:
-    try:
+    def _raw_check():
         stat = os.statvfs(path)
         total = stat.f_frsize * stat.f_blocks
         free = stat.f_frsize * stat.f_bavail
@@ -145,12 +184,15 @@ def check_disk_usage(path: str = "/") -> Tuple[str, str, float]:
             return "WARNING", f"{pct:.1f}% used ({used // (1024**3)}GB/{total // (1024**3)}GB)", pct
         else:
             return "CRITICAL", f"{pct:.1f}% used ({used // (1024**3)}GB/{total // (1024**3)}GB)", pct
+
+    try:
+        return retry_with_backoff(_raw_check)
     except Exception as e:
         return "WARNING", f"Cannot check: {e}", 0
 
 
 def check_memory_usage() -> Tuple[str, str, float]:
-    try:
+    def _raw_check():
         with open("/proc/meminfo") as f:
             meminfo = {}
             for line in f:
@@ -174,12 +216,15 @@ def check_memory_usage() -> Tuple[str, str, float]:
             return "WARNING", f"{pct:.1f}% used", pct
         else:
             return "CRITICAL", f"{pct:.1f}% used", pct
+
+    try:
+        return retry_with_backoff(_raw_check)
     except Exception as e:
         return "WARNING", f"Cannot check: {e}", 0
 
 
 def check_load_average() -> Tuple[str, str, float]:
-    try:
+    def _raw_check():
         with open("/proc/loadavg") as f:
             parts = f.read().strip().split()
             load = float(parts[0])
@@ -192,6 +237,9 @@ def check_load_average() -> Tuple[str, str, float]:
                 return "WARNING", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
             else:
                 return "CRITICAL", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
+
+    try:
+        return retry_with_backoff(_raw_check)
     except Exception as e:
         return "WARNING", f"Cannot check: {e}", 0
 
